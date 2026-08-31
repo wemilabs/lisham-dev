@@ -165,7 +165,7 @@ export const projects: Project[] = [
     description:
       "Search, explore, and reason over the global research record. Powered by OpenAlex.",
     image:
-      "https://ubrw5iu3hw.ufs.sh/f/TFsxjrtdWsEIAtTrGk8LQvXsUCu2GpW0aw8c4jifV7HDIJ9S",
+      "https://ubrw5iu3hw.ufs.sh/f/TFsxjrtdWsEIwssEMBmsUiY0zLCkKulEmNHjDg3vd2InF8Ob",
     link: "https://zapron.vercel.app/",
     badge: "in progress",
     position: 18,
