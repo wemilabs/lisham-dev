@@ -1,8 +1,8 @@
-import { ArrowDown, BookOpen } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/components/button";
 import { HeroSection } from "@/components/hero-section";
 import { Icons } from "@/components/icons";
+import { ArrowDown, BookOpen } from "lucide-react";
+import Link from "next/link";
 
 const Hero = () => {
   return (
@@ -13,7 +13,7 @@ const Hero = () => {
         title={
           <>
             Hey, I&apos;m{" "}
-            <span className="text-primary glow-text">lisham_</span>
+            <span className="text-primary glow-text">lisham_xyz</span>
           </>
         }
         description="I build full-stack products and write about technology. Explore the projects I have been working on or read the latest from the blog."
