@@ -31,6 +31,7 @@ const nextConfig: NextConfig = {
         "cdn-static.infotech.com",
         "www.slideteam.net",
         "thumbs.dreamstime.com",
+        "opengraph.githubassets.com",
       ].map((hostname) => ({ protocol: "https" as const, hostname })),
     ],
   },
