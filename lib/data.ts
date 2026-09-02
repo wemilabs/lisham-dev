@@ -149,7 +149,7 @@ export const projects: Project[] = [
     image:
       "https://hsl8jk540a.ufs.sh/f/JFF4Q8WebB6du5UdXxlTLMJtliDeN9nXqzs57GUH6RgZbryB",
     link: "https://starva.shop",
-    badge: "current",
+    badge: "in progress",
     position: 16,
   },
   {
@@ -169,5 +169,23 @@ export const projects: Project[] = [
     link: "https://zapron.vercel.app/",
     badge: "in progress",
     position: 18,
+  },
+  {
+    title: "Zis Chat | Fastest AI chat with live web search",
+    description: "Lightning fast AI chat",
+    image:
+      "https://ubrw5iu3hw.ufs.sh/f/TFsxjrtdWsEIYFZI8lCn7DKZwMB19jzv3CLR2JIrFhNuEYlp",
+    link: "https://zis-chat.vercel.app/",
+    badge: "in progress",
+    position: 19,
+  },
+  {
+    title:
+      "ship-to-prod | The skill that makes your agent responsibly ship code to production",
+    description:
+      "Ship completed work to the default branch in one shot. Agent-agnostic skill: format, lint, typecheck, build, commit, push, PR, merge.",
+    link: "https://github.com/wemilabs/ship-to-prod",
+    badge: "in progress",
+    position: 20,
   },
 ];

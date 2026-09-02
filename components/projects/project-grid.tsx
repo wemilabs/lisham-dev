@@ -15,7 +15,11 @@ import {
   type WheelPickerOption,
   WheelPickerWrapper,
 } from "@/components/wheel-picker";
-import { type BadgeType, projects } from "@/lib/data";
+import {
+  type BadgeType,
+  type Project,
+  projects as defaultProjects,
+} from "@/lib/data";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
@@ -105,7 +109,11 @@ function MobileWheelFilter({
   );
 }
 
-export function ProjectGrid() {
+export function ProjectGrid({
+  projects = defaultProjects,
+}: {
+  projects?: Project[];
+}) {
   const [badgeFilter, setBadgeFilter] = useState<"all" | BadgeType>("all");
 
   const filterCounts = projects.reduce<FilterCounts>(

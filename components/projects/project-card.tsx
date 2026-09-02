@@ -36,6 +36,7 @@ function ProjectContent({
           src={image ?? fallbackImage}
           alt={`Preview of ${title}`}
           fill
+          loading="eager"
           sizes="(max-width: 767px) calc(100vw - 2rem), (max-width: 1279px) calc(50vw - 2.5rem), 35rem"
           className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
         />
