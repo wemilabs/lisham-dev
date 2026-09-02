@@ -13,7 +13,7 @@ const Hero = () => {
         title={
           <>
             Hey, I&apos;m{" "}
-            <span className="text-primary glow-text">lisham_xyz</span>
+            <span className="text-primary glow-text">lisham_</span>
           </>
         }
         description="I build full-stack products and write about technology. Explore the projects I have been working on or read the latest from the blog."
