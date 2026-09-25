@@ -16,6 +16,7 @@ import { DataCard } from "@/components/data-card";
 import ProjectRequestForm from "@/components/forms/project-request-form";
 import { GlowContainer } from "@/components/glow-container";
 import { OrbitRotation } from "@/components/ui/orbit-rotation";
+import { centerTech, techStack } from "@/lib/tech-stack";
 
 export const metadata: Metadata = {
   title: "About | lisham_",
@@ -120,27 +121,7 @@ export default async function About() {
               Technology constellation
             </div>
             <div className="flex items-center justify-center">
-              <OrbitRotation
-                icons={[
-                  { name: "betterAuth" },
-                  { name: "drizzle" },
-                  { name: "pnpm" },
-                  { name: "neon" },
-                  { name: "nextjs" },
-                  { name: "vercel" },
-                  { name: "postgresql" },
-                  { name: "typescript" },
-                  { name: "react" },
-                  { name: "tailwindcss" },
-                  { name: "zod" },
-                  { name: "polar" },
-                  { name: "shadcn" },
-                  { name: "resend" },
-                ]}
-                centerIcon={{
-                  name: "devin",
-                }}
-              />
+              <OrbitRotation icons={techStack} centerIcon={centerTech} />
             </div>
           </GlowContainer>
         </AboutSection>
