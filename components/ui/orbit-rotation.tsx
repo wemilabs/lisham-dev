@@ -1,21 +1,27 @@
-"use client";
-
-import { Icons } from "@/components/icons";
+import { OrbitTechIcon } from "@/components/ui/orbit-tech-icon";
+import type { Tech } from "@/lib/tech-stack";
 import { cn } from "@/lib/utils";
-import { createElement, useState } from "react";
-
-interface OrbitIcon {
-  name: string;
-}
 
 interface OrbitRotationProps {
-  icons: OrbitIcon[];
+  icons: Tech[];
   orbitCount?: number;
   orbitGap?: number;
-  centerIcon: OrbitIcon;
+  centerIcon: Tech;
   className?: string;
   size?: "sm" | "md" | "lg";
 }
+
+const sizeClasses = {
+  sm: "size-16",
+  md: "size-24",
+  lg: "size-32",
+};
+
+const iconSizeClasses = {
+  sm: "size-6",
+  md: "size-8",
+  lg: "size-10",
+};
 
 export function OrbitRotation({
   icons,
@@ -26,20 +32,7 @@ export function OrbitRotation({
   size = "md",
   ...props
 }: OrbitRotationProps) {
-  const [isPaused, setIsPaused] = useState(false);
   const iconsPerOrbit = Math.ceil(icons.length / orbitCount);
-
-  const sizeClasses = {
-    sm: "size-16",
-    md: "size-24",
-    lg: "size-32",
-  };
-
-  const iconSizeClasses = {
-    sm: "size-6",
-    md: "size-8",
-    lg: "size-10",
-  };
 
   return (
     <div
@@ -50,22 +43,15 @@ export function OrbitRotation({
       style={{ minHeight: "32rem" }}
       {...props}
     >
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: hover only pauses a decorative animation, no functionality is gated on it */}
-      <div
-        className="relative flex items-center justify-center"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-      >
-        <div
+      <div className="group/orbit relative flex items-center justify-center">
+        <OrbitTechIcon
+          tech={centerIcon}
+          iconClassName={iconSizeClasses[size]}
           className={cn(
-            "bg-background/90 border-border flex items-center justify-center rounded-full border shadow-xl backdrop-blur-sm",
+            "bg-background/90 border-border border shadow-xl backdrop-blur-sm",
             sizeClasses[size],
           )}
-        >
-          {createElement(Icons[centerIcon.name as keyof typeof Icons], {
-            className: cn(iconSizeClasses[size]),
-          })}
-        </div>
+        />
 
         {[...Array(orbitCount)].map((_, orbitIdx) => {
           const orbitSize = `${8 + orbitGap * (orbitIdx + 1)}rem`;
@@ -75,12 +61,14 @@ export function OrbitRotation({
           return (
             <div
               key={orbitSize}
-              className="absolute rounded-full border-2 border-dotted border-border"
+              className="pointer-events-none absolute rounded-full border-2 border-dotted border-border group-focus-within/orbit:[animation-play-state:paused] group-hover/orbit:[animation-play-state:paused]"
               style={{
                 width: orbitSize,
                 height: orbitSize,
-                animation: `orbit-spin ${animationDuration} linear infinite`,
-                animationPlayState: isPaused ? "paused" : "running",
+                animationName: "orbit-spin",
+                animationDuration,
+                animationTimingFunction: "linear",
+                animationIterationCount: "infinite",
               }}
             >
               {icons
@@ -88,27 +76,24 @@ export function OrbitRotation({
                   orbitIdx * iconsPerOrbit,
                   orbitIdx * iconsPerOrbit + iconsPerOrbit,
                 )
-                .map((iconConfig, iconIdx) => {
+                .map((tech, iconIdx) => {
                   const angle = iconIdx * angleStep;
                   const radius = 50;
                   const x = (radius + radius * Math.cos(angle)).toFixed(5);
                   const y = (radius + radius * Math.sin(angle)).toFixed(5);
 
                   return (
-                    <div
-                      key={iconConfig.name}
-                      className="absolute rounded-full bg-background/80 p-2 shadow-lg backdrop-blur-sm"
+                    <OrbitTechIcon
+                      key={tech.icon}
+                      tech={tech}
+                      iconClassName={iconSizeClasses[size]}
+                      className="pointer-events-auto absolute bg-background/80 p-2 shadow-lg backdrop-blur-sm"
                       style={{
                         left: `${x}%`,
                         top: `${y}%`,
                         transform: "translate(-50%, -50%) rotate(0deg)",
                       }}
-                    >
-                      {createElement(
-                        Icons[iconConfig.name as keyof typeof Icons],
-                        { className: cn(iconSizeClasses[size]) },
-                      )}
-                    </div>
+                    />
                   );
                 })}
             </div>
