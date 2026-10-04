@@ -10,7 +10,6 @@ tags:
   - majorana-1
   - quantum-computing
   - qubits
-postOfTheDay: false
 date: "2025-02-23T13:58:50.429Z"
 lastEdited: "2025-02-23T14:11:12.937Z"
 ---

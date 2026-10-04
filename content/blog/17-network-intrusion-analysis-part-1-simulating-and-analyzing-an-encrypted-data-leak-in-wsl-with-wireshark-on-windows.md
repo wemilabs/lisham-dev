@@ -19,7 +19,6 @@ tags:
   - data-leak
   - encryption
   - ssl/tls
-postOfTheDay: true
 date: "2025-03-15T22:34:02.441Z"
 ---
 
@@ -133,14 +132,14 @@ while true; do
 done
 ```
 
-2. Save the file and make it executable:
+1. Save the file and make it executable:
 
 ```bash
 # Add execute permissions
 chmod +x leak.sh
 ```
 
-3. Run the script:
+1. Run the script:
 
 ```bash
 # Run the script
@@ -178,7 +177,7 @@ Use `tcpdump` to capture the encrypted traffic in WSL, as Wireshark on Windows c
 sudo apt update && sudo apt install -y tcpdump
 ```
 
-2. Capture traffic on the loopback interface:
+1. Capture traffic on the loopback interface:
 
 ```bash
 # Capture traffic

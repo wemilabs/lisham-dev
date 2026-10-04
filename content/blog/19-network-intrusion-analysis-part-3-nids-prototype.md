@@ -12,7 +12,6 @@ tags:
   - nids
   - port-scanning
   - syn-flood
-postOfTheDay: true
 date: "2025-03-21T13:20:22.640Z"
 ---
 
@@ -194,11 +193,11 @@ print("SYN flood simulation complete.")
 
 - Watch for the “Potential port scan” alert after 11 unique ports.
 
-3. In a third terminal, run the SYN flood script: `sudo python3 syn_flood.py`
+1. In a third terminal, run the SYN flood script: `sudo python3 syn_flood.py`
 
 - Watch for the “Potential SYN flood” alert after 101 SYN packets.
 
-4. Stop the NIDS with Ctrl+C when done.
+1. Stop the NIDS with Ctrl+C when done.
 
 ---
 

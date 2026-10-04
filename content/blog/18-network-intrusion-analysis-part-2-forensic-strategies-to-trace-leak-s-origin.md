@@ -11,7 +11,6 @@ tags:
   - strategies
   - forensic
   - leak
-postOfTheDay: true
 date: "2025-03-15T23:52:50.457Z"
 ---
 
