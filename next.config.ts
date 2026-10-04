@@ -1,8 +1,15 @@
 import type { NextConfig } from "next";
+import { readdirSync } from "node:fs";
+import path from "node:path";
+
+const blogSlugs = readdirSync(path.join(process.cwd(), "content/blog"))
+  .filter((file) => file.endsWith(".md"))
+  .map((file) => file.replace(/\.md$/, "").replace(/^\d{2,}-/, ""));
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
   cacheComponents: true,
+  env: { BLOG_SLUGS: blogSlugs.join(",") },
   experimental: {
     useOffline: true,
     turbopackRustReactCompiler: true,

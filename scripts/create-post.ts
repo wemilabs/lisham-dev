@@ -1,5 +1,5 @@
 import prompts from "prompts";
-import { createNewPost } from "../lib/posts";
+import { createNewPost, stripOrderPrefix } from "../lib/posts";
 
 interface PostData {
   title: string;
@@ -115,6 +115,7 @@ async function main() {
 
     const slug = await createNewPost(postData, boilerplateContent);
     console.log("✅ Created new post:", slug);
+    console.log(`🔗 URL: /blog/${stripOrderPrefix(slug)}`);
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === "ABORTED") {

@@ -1,6 +1,3 @@
-import { CalendarDays, Clock3, LockKeyhole, Mail, Share2 } from "lucide-react";
-import type { Metadata } from "next";
-import { Suspense } from "react";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Button } from "@/components/button";
@@ -13,8 +10,17 @@ import { TableOfContents } from "@/components/posts/table-of-contents";
 import { Skeleton } from "@/components/skeleton";
 import { Tag } from "@/components/tag";
 import { CodeBlock } from "@/components/ui/code-block";
-import { getAllPosts, getPostBySlug, getRelatedPosts } from "@/lib/blog";
+import {
+  getAllPosts,
+  getPostBySlug,
+  getRelatedPosts,
+  postExists,
+} from "@/lib/blog";
 import { formatDate } from "@/lib/utils";
+import { CalendarDays, Clock3, LockKeyhole, Mail, Share2 } from "lucide-react";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 const SITE_URL = "https://lisham.dev";
 
@@ -29,6 +35,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  if (!(await postExists(slug))) notFound();
   const post = await getPostBySlug(slug);
   const canonicalPath = `/blog/${post.slug}`;
 
@@ -142,6 +149,7 @@ async function BlogPostContent({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  if (!(await postExists(slug))) notFound();
   const post = await getPostBySlug(slug);
   const relatedPosts = await getRelatedPosts(post);
 
