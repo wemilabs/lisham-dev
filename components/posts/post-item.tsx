@@ -1,9 +1,9 @@
-import { ArrowUpRight, CalendarDays, Clock3, Star } from "lucide-react";
-import Link from "next/link";
 import { GlowContainer } from "@/components/glow-container";
 import { Tag } from "@/components/tag";
 import type { BlogPost } from "@/lib/blog";
 import { cn, formatDate } from "@/lib/utils";
+import { ArrowUpRight, CalendarDays, Clock3 } from "lucide-react";
+import Link from "next/link";
 import { PostCover } from "./post-cover";
 
 interface PostItemProps {
@@ -61,13 +61,6 @@ export function PostItem({ featured = false, post }: PostItemProps) {
               {post.readingTime} min read
             </span>
           </div>
-
-          {featured ? (
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-primary">
-              <Star className="size-3.5 fill-current" aria-hidden="true" />
-              Post of the day
-            </div>
-          ) : null}
 
           <div className="space-y-3">
             <h2
