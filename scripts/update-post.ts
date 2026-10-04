@@ -1,10 +1,16 @@
+import matter from "gray-matter";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import matter from "gray-matter";
 import prompts from "prompts";
-import { generateSafeSlug } from "../lib/posts";
+import {
+  generateSafeSlug,
+  listPosts,
+  renumberPosts,
+  resolvePostFile,
+  stripOrderPrefix,
+} from "../lib/posts";
 
 const postsDirectory = path.join(process.cwd(), "content/blog");
 
@@ -77,33 +83,14 @@ async function main() {
 
     // If no slug provided, list available posts and prompt for selection
     if (!targetSlug) {
-      const files = await fs.readdir(postsDirectory);
-      const posts = await Promise.all(
-        files
-          .filter((file) => file.endsWith(".md"))
-          .map(async (file) => {
-            const content = await fs.readFile(
-              path.join(postsDirectory, file),
-              "utf8",
-            );
-            const { data } = matter(content);
-            return {
-              slug: file.replace(/\.md$/, ""),
-              title: data.title,
-              date: new Date(data.date).toLocaleDateString(),
-            };
-          }),
-      );
-
-      // Sort posts by date (newest first)
-      posts.sort((a, b) => b.date.localeCompare(a.date));
+      const posts = await listPosts();
 
       const response = await prompts({
         type: "select",
         name: "slug",
         message: "Select a post to update:",
         choices: posts.map((post) => ({
-          title: `${post.title} (${post.date})`,
+          title: `${post.title} (${post.date.toLocaleDateString()})`,
           value: post.slug,
         })),
       });
@@ -115,11 +102,14 @@ async function main() {
       targetSlug = response.slug;
     }
 
-    // Read existing post
-    const postPath = path.join(postsDirectory, `${targetSlug}.md`);
+    // Read existing post (accepts "foo" or "05-foo")
+    const postFile = await resolvePostFile(targetSlug);
+    const postPath = path.join(postsDirectory, postFile);
     const fileContent = await fs.readFile(postPath, "utf8");
     const { data: existingData, content: existingContent } =
       matter(fileContent);
+
+    const currentBase = stripOrderPrefix(postFile.replace(/\.md$/, ""));
 
     // Get updated metadata
     const updates = await prompts([
@@ -167,16 +157,19 @@ async function main() {
       lastEdited: new Date().toISOString(),
     };
 
-    // Check if title changed and generate new slug
+    // Check if title changed and the new title maps to a different slug
     let newSlug: string | undefined;
     if (updates.title && updates.title !== existingData.title) {
       metadata.title = updates.title;
-      newSlug = generateSafeSlug(updates.title);
-      const newPath = path.join(postsDirectory, `${newSlug}.md`);
-
-      // Check if new slug would conflict with existing file
-      if (existsSync(newPath) && newPath !== postPath) {
-        throw new Error(`A post with slug "${newSlug}" already exists`);
+      const candidate = generateSafeSlug(updates.title);
+      if (candidate !== currentBase) {
+        newSlug = candidate;
+        const taken = (await listPosts()).some(
+          (post) => post.baseSlug === newSlug,
+        );
+        if (taken) {
+          throw new Error(`A post with slug "${newSlug}" already exists`);
+        }
       }
     }
 
@@ -207,17 +200,20 @@ async function main() {
     const newContent = matter.stringify(finalContent, metadata);
 
     if (newSlug) {
-      // Write to new location and delete old file
+      // Write unnumbered and let renumberPosts place it back by date
       const newPath = path.join(postsDirectory, `${newSlug}.md`);
       await fs.writeFile(newPath, newContent, "utf8");
       await fs.unlink(postPath);
-      console.log("✅ Updated post:", targetSlug);
-      console.log("📝 Slug updated to:", newSlug);
     } else {
-      // Update existing file
       await fs.writeFile(postPath, newContent, "utf8");
-      console.log("✅ Updated post:", targetSlug);
     }
+
+    await renumberPosts();
+
+    const finalFile = await resolvePostFile(newSlug ?? currentBase);
+    const finalSlug = finalFile.replace(/\.md$/, "");
+    console.log("✅ Updated post:", finalSlug);
+    console.log(`🔗 URL: /blog/${stripOrderPrefix(finalSlug)}`);
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === "ABORTED") {

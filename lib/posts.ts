@@ -1,16 +1,19 @@
+import matter from "gray-matter";
 import { existsSync, mkdirSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import matter from "gray-matter";
 
 const postsDirectory = path.join(process.cwd(), "content/blog");
 const draftsDirectory = path.join(process.cwd(), "content/_drafts");
-const trashDirectory = path.join(process.cwd(), "content/.trash");
+
+const ORDER_PREFIX = /^\d{2,}-/;
+const DRAFT_SUFFIX = ".draft.md";
 
 interface PostMetadata {
   title: string;
   description: string;
   tags: string[];
+  coverImage?: string;
   status?: "draft" | "published";
   postOfTheDay?: boolean;
   lastEdited?: string;
@@ -18,13 +21,32 @@ interface PostMetadata {
   date?: string;
 }
 
+interface PostEntry {
+  filename: string;
+  base: string;
+  title: string;
+  date: number;
+}
+
 /**
- * Ensures the trash directory exists
+ * Strips the ordering prefix ("05-foo" -> "foo") from a slug
+ * @param slug Slug or filename base
+ * @returns Slug without the ordering prefix
  */
-async function ensureTrashDirectory(): Promise<void> {
-  if (!existsSync(trashDirectory)) {
-    mkdirSync(trashDirectory, { recursive: true });
-  }
+export function stripOrderPrefix(slug: string): string {
+  return slug.replace(ORDER_PREFIX, "");
+}
+
+/**
+ * Generates a URL-friendly slug from a title
+ * @param title The title to convert to slug
+ * @returns URL-friendly slug
+ */
+export function generateSafeSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 /**
@@ -36,217 +58,193 @@ async function ensureDraftsDirectory(): Promise<void> {
   }
 }
 
-/**
- * Generates a timestamped filename for the trash
- * @param originalSlug The original post slug
- * @returns Timestamped filename
- */
-function generateTrashFilename(originalSlug: string): string {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `${timestamp}_${originalSlug}.md`;
+function toTimestamp(value: unknown): number {
+  const time = new Date(String(value ?? "")).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+async function readPostEntries(): Promise<PostEntry[]> {
+  const files = (await fs.readdir(postsDirectory)).filter((file) =>
+    file.endsWith(".md"),
+  );
+
+  return Promise.all(
+    files.map(async (filename) => {
+      const content = await fs.readFile(
+        path.join(postsDirectory, filename),
+        "utf8",
+      );
+      const { data } = matter(content);
+      return {
+        filename,
+        base: stripOrderPrefix(filename.replace(/\.md$/, "")),
+        title: String(data.title ?? ""),
+        date: toTimestamp(data.date ?? data.publishDate ?? data.lastEdited),
+      };
+    }),
+  );
 }
 
 /**
- * Creates a new blog post with automatic timestamp
+ * Renumbers every post in content/blog so filenames are "NN-base.md",
+ * ordered by the post's date (oldest first). Always recomputes from the
+ * current files and frontmatter, so it stays correct no matter how a post
+ * got there (created, restored, edited by hand, dropped in manually).
+ * @returns List of renames applied, as { from, to } filenames
+ */
+export async function renumberPosts(): Promise<
+  Array<{ from: string; to: string }>
+> {
+  const entries = await readPostEntries();
+
+  entries.sort((a, b) => a.date - b.date || a.base.localeCompare(b.base));
+
+  const changes: Array<{ from: string; to: string }> = [];
+
+  // Two-phase rename: move to temp names first so reordering
+  // (e.g. 01-foo -> 02-foo while 02-bar -> 01-bar) can't clobber files.
+  const pending: Array<{ tmp: string; target: string }> = [];
+  for (const [index, entry] of entries.entries()) {
+    const target = `${String(index + 1).padStart(2, "0")}-${entry.base}.md`;
+    if (entry.filename === target) continue;
+
+    const tmp = `.renumber-${index}.tmp`;
+    await fs.rename(
+      path.join(postsDirectory, entry.filename),
+      path.join(postsDirectory, tmp),
+    );
+    pending.push({ tmp, target });
+    changes.push({ from: entry.filename, to: target });
+  }
+
+  for (const { tmp, target } of pending) {
+    await fs.rename(
+      path.join(postsDirectory, tmp),
+      path.join(postsDirectory, target),
+    );
+  }
+
+  return changes;
+}
+
+/**
+ * Resolves a post slug ("foo" or "05-foo") to its filename in content/blog
+ * @param slug Slug with or without the ordering prefix
+ * @returns The matching filename (e.g. "05-foo.md")
+ */
+export async function resolvePostFile(slug: string): Promise<string> {
+  const files = (await fs.readdir(postsDirectory)).filter((file) =>
+    file.endsWith(".md"),
+  );
+
+  const exact = `${slug}.md`;
+  if (files.includes(exact)) return exact;
+
+  const matches = files.filter(
+    (file) => stripOrderPrefix(file.replace(/\.md$/, "")) === slug,
+  );
+
+  if (matches.length === 1) return matches[0];
+  if (matches.length > 1) {
+    throw new Error(
+      `Slug "${slug}" matches multiple posts: ${matches.join(", ")}`,
+    );
+  }
+  throw new Error(`Post "${slug}" not found`);
+}
+
+function draftBase(filenameOrSlug: string): string {
+  return filenameOrSlug.endsWith(DRAFT_SUFFIX)
+    ? filenameOrSlug.slice(0, -DRAFT_SUFFIX.length)
+    : filenameOrSlug.replace(/\.draft$/, "");
+}
+
+/**
+ * Resolves a draft slug to its filename in content/_drafts
+ * @param slug Draft slug, with or without the .draft suffix
+ * @returns The matching filename (e.g. "foo.draft.md")
+ */
+export async function resolveDraftFile(slug: string): Promise<string> {
+  const base = draftBase(slug);
+  const filename = `${base}${DRAFT_SUFFIX}`;
+
+  if (!existsSync(path.join(draftsDirectory, filename))) {
+    throw new Error(`Draft "${base}" not found`);
+  }
+  return filename;
+}
+
+/**
+ * Lists all published posts, newest first
+ * @returns Posts with filename slug (numbered), base slug, title and date
+ */
+export async function listPosts(): Promise<
+  Array<{ slug: string; baseSlug: string; title: string; date: Date }>
+> {
+  const entries = await readPostEntries();
+
+  return entries
+    .map((entry) => ({
+      slug: entry.filename.replace(/\.md$/, ""),
+      baseSlug: entry.base,
+      title: entry.title,
+      date: new Date(entry.date),
+    }))
+    .sort((a, b) => b.date.getTime() - a.date.getTime());
+}
+
+/**
+ * Creates a new blog post and renumbers the directory
  * @param metadata Post metadata (title, description, tags)
  * @param boilerplateContent Initial content of the post
- * @returns The generated slug for the post
+ * @returns The generated slug, including its ordering prefix
  */
 export async function createNewPost(
   metadata: PostMetadata,
   boilerplateContent: string = "",
 ): Promise<string> {
-  // Generate slug from title
   const slug = generateSafeSlug(metadata.title);
 
-  const filePath = path.join(postsDirectory, `${slug}.md`);
-
-  // Check if file already exists
-  if (existsSync(filePath)) {
+  const taken = (await readPostEntries()).some((post) => post.base === slug);
+  if (taken) {
     throw new Error(`A post with slug "${slug}" already exists`);
   }
 
-  // Create frontmatter with automatic timestamp
   const frontmatter = {
     ...metadata,
-    date: new Date().toISOString(), // Automatically set creation date
+    date: new Date().toISOString(),
   };
-
-  // Combine frontmatter and content
   const fileContent = matter.stringify(boilerplateContent, frontmatter);
 
-  // Create the posts directory if it doesn't exist
   if (!existsSync(postsDirectory)) {
     mkdirSync(postsDirectory, { recursive: true });
   }
 
-  // Write the file asynchronously
-  await fs.writeFile(filePath, fileContent, "utf8");
-
-  return slug;
-}
-
-/**
- * Updates an existing blog post while preserving its creation date
- * @param slug The URL-friendly name of the post
- * @param metadata Post metadata (title, description, tags)
- * @param updatedContent Updated content of the post
- * @returns Promise that resolves when the post is updated
- */
-export async function updatePost(
-  slug: string,
-  metadata: PostMetadata,
-  updatedContent: string = "",
-): Promise<void> {
-  const filePath = path.join(postsDirectory, `${slug}.md`);
-
-  // Check if file exists
-  if (!existsSync(filePath)) {
-    throw new Error(`Post "${slug}" not found`);
-  }
-
-  // Read existing file to get the original creation date
-  const existingContent = await fs.readFile(filePath, "utf8");
-  const { data: existingFrontmatter } = matter(existingContent);
-
-  // Create new frontmatter while preserving the original date
-  const frontmatter = {
-    ...metadata,
-    date: existingFrontmatter.date, // Preserve original creation date
-  };
-
-  // Combine frontmatter and new content
-  const fileContent = matter.stringify(updatedContent, frontmatter);
-
-  // Write the updated file
-  await fs.writeFile(filePath, fileContent, "utf8");
-}
-
-/**
- * Moves a blog post to the trash
- * @param slug The URL-friendly name of the post to trash
- * @returns Promise that resolves when the post is moved to trash
- */
-export async function movePostToTrash(slug: string): Promise<void> {
-  const sourceFile = path.join(postsDirectory, `${slug}.md`);
-
-  // Check if file exists
-  if (!existsSync(sourceFile)) {
-    throw new Error(`Post "${slug}" not found`);
-  }
-
-  // Ensure trash directory exists
-  await ensureTrashDirectory();
-
-  // Generate unique filename for trash
-  const trashFilename = generateTrashFilename(slug);
-  const trashFile = path.join(trashDirectory, trashFilename);
-
-  // Move file to trash
-  await fs.rename(sourceFile, trashFile);
-}
-
-/**
- * Restores a post from the trash
- * @param filename The filename in the trash (including timestamp)
- * @returns Promise that resolves with the restored post's slug
- */
-export async function restoreFromTrash(filename: string): Promise<string> {
-  const trashFile = path.join(trashDirectory, filename);
-
-  // Check if file exists in trash
-  if (!existsSync(trashFile)) {
-    throw new Error(`File "${filename}" not found in trash`);
-  }
-
-  // Extract original slug from filename
-  const originalSlug = filename
-    .replace(/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z_/, "")
-    .replace(/\.md$/, "");
-  const targetFile = path.join(postsDirectory, `${originalSlug}.md`);
-
-  // Check if a post with the same slug already exists
-  if (existsSync(targetFile)) {
-    throw new Error(`A post with slug "${originalSlug}" already exists`);
-  }
-
-  // Move file back to posts directory
-  await fs.rename(trashFile, targetFile);
-
-  return originalSlug;
-}
-
-/**
- * Lists all posts in the trash
- * @returns Promise that resolves with array of trash items
- */
-export async function listTrash(): Promise<
-  Array<{
-    filename: string;
-    originalSlug: string;
-    title: string;
-    deletedAt: Date;
-  }>
-> {
-  // Ensure trash directory exists
-  await ensureTrashDirectory();
-
-  // Read trash directory
-  const files = await fs.readdir(trashDirectory);
-
-  // Get details for each file
-  const trashItems = await Promise.all(
-    files.map(async (filename) => {
-      const content = await fs.readFile(
-        path.join(trashDirectory, filename),
-        "utf8",
-      );
-      const { data } = matter(content);
-      const timestamp = filename.match(
-        /^(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z)_/,
-      )?.[1];
-      const originalSlug = filename
-        .replace(/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z_/, "")
-        .replace(/\.md$/, "");
-
-      return {
-        filename,
-        originalSlug,
-        title: data.title,
-        deletedAt: timestamp
-          ? new Date(timestamp.replace(/-/g, ":"))
-          : new Date(0),
-      };
-    }),
+  // Write unnumbered, then let renumberPosts place it by date
+  await fs.writeFile(
+    path.join(postsDirectory, `${slug}.md`),
+    fileContent,
+    "utf8",
   );
+  await renumberPosts();
 
-  // Sort by deletion date (newest first)
-  return trashItems.sort(
-    (a, b) => b.deletedAt.getTime() - a.deletedAt.getTime(),
-  );
+  return (await resolvePostFile(slug)).replace(/\.md$/, "");
 }
 
 /**
- * Permanently deletes all posts in the trash
- * @returns Promise that resolves with the number of files deleted
+ * Permanently deletes a post, then renumbers the directory.
+ * Previously committed posts remain recoverable from git history.
+ * @param slug Slug with or without the ordering prefix
  */
-export async function emptyTrash(): Promise<number> {
-  // Ensure trash directory exists
-  await ensureTrashDirectory();
-
-  // Read trash directory
-  const files = await fs.readdir(trashDirectory);
-
-  // Delete all files
-  await Promise.all(
-    files.map((file) => fs.unlink(path.join(trashDirectory, file))),
-  );
-
-  return files.length;
+export async function deletePost(slug: string): Promise<void> {
+  const filename = await resolvePostFile(slug);
+  await fs.unlink(path.join(postsDirectory, filename));
+  await renumberPosts();
 }
 
 /**
- * Creates a new draft post
+ * Creates a new draft post (drafts are unordered scratch files
+ * and never carry an ordering prefix)
  * @param title The title of the draft
  * @param metadata Additional metadata (description, tags)
  * @param content Initial content
@@ -257,34 +255,26 @@ export async function createDraft(
   metadata: Partial<PostMetadata> = {},
   content: string = "",
 ): Promise<string> {
-  // Generate slug from title
   const slug = generateSafeSlug(title);
 
-  // Ensure drafts directory exists
   await ensureDraftsDirectory();
 
-  const filePath = path.join(draftsDirectory, `${slug}.draft.md`);
-
-  // Check if draft already exists
+  const filePath = path.join(draftsDirectory, `${slug}${DRAFT_SUFFIX}`);
   if (existsSync(filePath)) {
     throw new Error(`A draft with slug "${slug}" already exists`);
   }
 
-  // Create frontmatter
   const frontmatter: PostMetadata = {
     title,
     description: metadata.description || "",
     tags: metadata.tags || ["draft"],
     status: "draft",
+    ...(metadata.postOfTheDay ? { postOfTheDay: true } : {}),
     lastEdited: new Date().toISOString(),
     publishDate: null,
   };
 
-  // Combine frontmatter and content
-  const fileContent = matter.stringify(content, frontmatter);
-
-  // Write the draft file
-  await fs.writeFile(filePath, fileContent, "utf8");
+  await fs.writeFile(filePath, matter.stringify(content, frontmatter), "utf8");
 
   return slug;
 }
@@ -301,16 +291,13 @@ export async function listDrafts(): Promise<
     lastEdited: Date;
   }>
 > {
-  // Ensure drafts directory exists
   await ensureDraftsDirectory();
 
-  // Read drafts directory
   const files = await fs.readdir(draftsDirectory);
 
-  // Get details for each draft
   const drafts = await Promise.all(
     files
-      .filter((file) => file.endsWith(".draft.md"))
+      .filter((file) => file.endsWith(DRAFT_SUFFIX))
       .map(async (file) => {
         const content = await fs.readFile(
           path.join(draftsDirectory, file),
@@ -318,7 +305,7 @@ export async function listDrafts(): Promise<
         );
         const { data } = matter(content);
         return {
-          slug: file.replace(/\.draft\.md$/, ""),
+          slug: draftBase(file),
           title: data.title,
           description: data.description,
           lastEdited: new Date(data.lastEdited),
@@ -326,178 +313,46 @@ export async function listDrafts(): Promise<
       }),
   );
 
-  // Sort by last edited date (newest first)
   return drafts.sort((a, b) => b.lastEdited.getTime() - a.lastEdited.getTime());
 }
 
 /**
- * Generates a URL-friendly slug from a title
- * @param title The title to convert to slug
- * @returns URL-friendly slug
- */
-export function generateSafeSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-/**
- * Updates an existing draft
+ * Publishes a draft into content/blog and renumbers the directory
  * @param slug The draft's slug
- * @param metadata Updated metadata
- * @param content Updated content
- * @returns New slug if title was updated and slug changed, otherwise undefined
- */
-export async function updateDraft(
-  slug: string,
-  metadata?: Partial<PostMetadata>,
-  content?: string,
-): Promise<string | undefined> {
-  const filePath = path.join(draftsDirectory, `${slug}.draft.md`);
-
-  // Check if draft exists
-  if (!existsSync(filePath)) {
-    throw new Error(`Draft "${slug}" not found`);
-  }
-
-  // Read existing draft
-  const fileContent = await fs.readFile(filePath, "utf8");
-  const { data: existingData, content: existingBodyContent } =
-    matter(fileContent);
-
-  // Merge metadata
-  const newMetadata: PostMetadata = {
-    title: existingData.title,
-    description: existingData.description,
-    tags: existingData.tags,
-    ...metadata,
-    lastEdited: new Date().toISOString(),
-    status: "draft",
-  };
-
-  // Generate new slug if title changed
-  let newSlug: string | undefined;
-  if (metadata?.title && metadata.title !== existingData.title) {
-    newSlug = generateSafeSlug(metadata.title);
-    const newPath = path.join(draftsDirectory, `${newSlug}.draft.md`);
-
-    // Check if new slug would conflict with existing file
-    if (existsSync(newPath) && newPath !== filePath) {
-      throw new Error(`A draft with slug "${newSlug}" already exists`);
-    }
-  }
-
-  // Create new file content
-  const newFileContent = matter.stringify(
-    content ?? existingBodyContent,
-    newMetadata,
-  );
-
-  if (newSlug) {
-    // Write to new location and delete old file
-    const newPath = path.join(draftsDirectory, `${newSlug}.draft.md`);
-    await fs.writeFile(newPath, newFileContent, "utf8");
-    await fs.unlink(filePath);
-    return newSlug;
-  } else {
-    // Update existing file
-    await fs.writeFile(filePath, newFileContent, "utf8");
-  }
-}
-
-/**
- * Publishes a draft to the blog
- * @param slug The draft's slug
- * @returns The published post's slug
+ * @returns The published post's slug, including its ordering prefix
  */
 export async function publishDraft(slug: string): Promise<string> {
-  const draftPath = path.join(draftsDirectory, `${slug}.draft.md`);
-  const publishPath = path.join(postsDirectory, `${slug}.md`);
+  const draftFile = await resolveDraftFile(slug);
+  const base = draftBase(draftFile);
 
-  // Check if draft exists
-  if (!existsSync(draftPath)) {
-    throw new Error(`Draft "${slug}" not found`);
+  const taken = (await readPostEntries()).some((post) => post.base === base);
+  if (taken) {
+    throw new Error(`A published post with slug "${base}" already exists`);
   }
 
-  // Check if published post already exists
-  if (existsSync(publishPath)) {
-    throw new Error(`A published post with slug "${slug}" already exists`);
-  }
-
-  // Read draft content
-  const draftContent = await fs.readFile(draftPath, "utf8");
+  const draftContent = await fs.readFile(
+    path.join(draftsDirectory, draftFile),
+    "utf8",
+  );
   const { data: metadata, content } = matter(draftContent);
 
   const now = new Date().toISOString();
-
-  // Update metadata for publishing
   const publishMetadata: PostMetadata = {
-    title: metadata.title,
-    description: metadata.description,
-    tags: metadata.tags,
+    ...(metadata as PostMetadata),
     status: "published",
     publishDate: now,
     lastEdited: now,
-    date: now, // Add date field for blog compatibility
+    date: now,
   };
 
-  // Create published content
-  const publishContent = matter.stringify(content, publishMetadata);
+  await fs.writeFile(
+    path.join(postsDirectory, `${base}.md`),
+    matter.stringify(content, publishMetadata),
+    "utf8",
+  );
+  await fs.unlink(path.join(draftsDirectory, draftFile));
 
-  // Write published file
-  await fs.writeFile(publishPath, publishContent, "utf8");
+  await renumberPosts();
 
-  // Delete draft
-  await fs.unlink(draftPath);
-
-  return slug;
-}
-
-/**
- * Converts a published post back to a draft
- * @param slug The published post's slug
- * @returns The draft's slug
- */
-export async function unpublishPost(slug: string): Promise<string> {
-  const publishPath = path.join(postsDirectory, `${slug}.md`);
-  const draftPath = path.join(draftsDirectory, `${slug}.draft.md`);
-
-  // Check if published post exists
-  if (!existsSync(publishPath)) {
-    throw new Error(`Published post "${slug}" not found`);
-  }
-
-  // Ensure drafts directory exists
-  await ensureDraftsDirectory();
-
-  // Check if draft already exists
-  if (existsSync(draftPath)) {
-    throw new Error(`A draft with slug "${slug}" already exists`);
-  }
-
-  // Read published content
-  const publishContent = await fs.readFile(publishPath, "utf8");
-  const { data: metadata, content } = matter(publishContent);
-
-  // Update metadata for draft
-  const draftMetadata: PostMetadata = {
-    title: metadata.title,
-    description: metadata.description,
-    tags: metadata.tags,
-    status: "draft",
-    lastEdited: new Date().toISOString(),
-    publishDate: null,
-  };
-
-  // Create draft content
-  const draftContent = matter.stringify(content, draftMetadata);
-
-  // Write draft file
-  await fs.writeFile(draftPath, draftContent, "utf8");
-
-  // Delete published post
-  await fs.unlink(publishPath);
-
-  return slug;
+  return (await resolvePostFile(base)).replace(/\.md$/, "");
 }

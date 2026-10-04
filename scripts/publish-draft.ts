@@ -1,5 +1,5 @@
 import prompts from "prompts";
-import { listDrafts, publishDraft } from "../lib/posts";
+import { listDrafts, publishDraft, stripOrderPrefix } from "../lib/posts";
 
 async function main() {
   try {
@@ -50,6 +50,7 @@ async function main() {
     // Publish the draft
     const publishedSlug = await publishDraft(targetSlug);
     console.log("✅ Published draft:", publishedSlug);
+    console.log(`🔗 URL: /blog/${stripOrderPrefix(publishedSlug)}`);
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === "ABORTED") {

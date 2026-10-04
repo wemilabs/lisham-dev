@@ -1,6 +1,6 @@
+import matter from "gray-matter";
 import fs from "node:fs";
 import path from "node:path";
-import matter from "gray-matter";
 import type { Theme } from "rehype-pretty-code";
 import rehypePrettyCode from "rehype-pretty-code";
 import rehypeStringify from "rehype-stringify";
@@ -37,6 +37,7 @@ interface HastNode {
 }
 
 const postsDirectory = path.join(process.cwd(), "content/blog");
+const ORDER_PREFIX = /^\d{2,}-/;
 const THEME: Theme = "github-dark";
 const WORDS_PER_MINUTE = 200;
 
@@ -147,14 +148,44 @@ export async function getAllPosts(): Promise<BlogPost[]> {
   });
 }
 
+// Posts on disk are "NN-slug.md"; the public slug is the filename
+// without the ordering prefix, so URLs stay stable across renumbering.
+function findPostFileName(slug: string): string | undefined {
+  const realSlug = slug.replace(/\.md$/, "").replace(ORDER_PREFIX, "");
+  return fs
+    .readdirSync(postsDirectory)
+    .find(
+      (file) =>
+        file.endsWith(".md") &&
+        file.replace(/\.md$/, "").replace(ORDER_PREFIX, "") === realSlug,
+    );
+}
+
+/**
+ * Checks whether a post exists for the given slug, without rendering it.
+ * @param slug Slug with or without the ordering prefix
+ */
+export async function postExists(slug: string): Promise<boolean> {
+  "use cache";
+  return findPostFileName(slug) !== undefined;
+}
+
 export async function getPostBySlug(slug: string): Promise<BlogPost> {
   "use cache";
 
-  const realSlug = slug.replace(/\.md$/, "");
-  const fullPath = path.join(postsDirectory, `${realSlug}.md`);
+  const fileName = findPostFileName(slug);
+
+  if (!fileName) {
+    throw new Error(`Post not found: ${slug}`);
+  }
+
+  const realSlug = fileName.replace(/\.md$/, "").replace(ORDER_PREFIX, "");
 
   try {
-    const fileContents = fs.readFileSync(fullPath, "utf8");
+    const fileContents = fs.readFileSync(
+      path.join(postsDirectory, fileName),
+      "utf8",
+    );
     const { data, content } = matter(fileContents);
     const tableOfContents: TableOfContentsItem[] = [];
     const prettyCodeOptions: Partial<Parameters<typeof rehypePrettyCode>[0]> = {

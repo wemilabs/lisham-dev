@@ -1,28 +1,5 @@
-import { existsSync } from "node:fs";
-import fs from "node:fs/promises";
-import path from "node:path";
-import matter from "gray-matter";
 import prompts from "prompts";
-import { movePostToTrash } from "../lib/posts";
-
-const postsDirectory = path.join(process.cwd(), "content/blog");
-
-/**
- * Deletes a blog post
- * @param slug The URL-friendly name of the post to delete
- * @returns Promise that resolves when the post is deleted
- */
-async function deletePost(slug: string): Promise<void> {
-  const filePath = path.join(postsDirectory, `${slug}.md`);
-
-  // Check if file exists
-  if (!existsSync(filePath)) {
-    throw new Error(`Post "${slug}" not found`);
-  }
-
-  // Move the file to trash
-  await movePostToTrash(slug);
-}
+import { deletePost, listPosts } from "../lib/posts";
 
 async function main() {
   try {
@@ -33,34 +10,14 @@ async function main() {
 
     // If no slug provided, list available posts and prompt for selection
     if (!targetSlug) {
-      // Get list of posts
-      const files = await fs.readdir(postsDirectory);
-      const posts = await Promise.all(
-        files
-          .filter((file) => file.endsWith(".md"))
-          .map(async (file) => {
-            const content = await fs.readFile(
-              path.join(postsDirectory, file),
-              "utf8",
-            );
-            const { data } = matter(content);
-            return {
-              slug: file.replace(/\.md$/, ""),
-              title: data.title,
-              date: new Date(data.date).toLocaleDateString(),
-            };
-          }),
-      );
-
-      // Sort posts by date (newest first)
-      posts.sort((a, b) => b.date.localeCompare(a.date));
+      const posts = await listPosts();
 
       const response = await prompts({
         type: "select",
         name: "slug",
-        message: "Select a post to move to trash:",
+        message: "Select a post to delete:",
         choices: posts.map((post) => ({
-          title: `${post.title} (${post.date})`,
+          title: `${post.title} (${post.date.toLocaleDateString()})`,
           value: post.slug,
         })),
       });
@@ -76,7 +33,7 @@ async function main() {
     const confirmation = await prompts({
       type: "confirm",
       name: "value",
-      message: `Move "${targetSlug}" to trash? You can restore it later.`,
+      message: `Permanently delete "${targetSlug}"? (A committed post stays recoverable via git history)`,
       initial: false,
     });
 
@@ -84,17 +41,16 @@ async function main() {
       throw new Error("ABORTED");
     }
 
-    // Move post to trash
+    // Delete the post and renumber the directory
     await deletePost(targetSlug);
-    console.log("✅ Moved post to trash:", targetSlug);
-    console.log("💡 Tip: Use 'pnpm restore-post' to recover it");
+    console.log("✅ Deleted post:", targetSlug);
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === "ABORTED") {
         console.log("❌ Operation cancelled");
         process.exit(0);
       }
-      console.error("❌ Failed to move post to trash:", error.message);
+      console.error("❌ Failed to delete post:", error.message);
     } else {
       console.error("❌ An unexpected error occurred");
     }
