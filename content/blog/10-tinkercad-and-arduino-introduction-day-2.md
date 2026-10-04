@@ -9,7 +9,6 @@ tags:
   - programming
   - c&cpp
   - tinkercad
-postOfTheDay: false
 date: "2025-02-18T11:01:11.187Z"
 ---
 

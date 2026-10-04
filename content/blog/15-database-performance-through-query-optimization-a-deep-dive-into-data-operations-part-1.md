@@ -10,7 +10,6 @@ tags:
   - query
   - optimization
   - sql
-postOfTheDay: false
 date: "2025-03-04T12:20:41.889Z"
 ---
 
@@ -248,7 +247,7 @@ In Part 2 of this series, we'll explore advanced topics including:
 - Parallel query execution
 - Database configuration tuning
 
-## References:
+## References
 
 - "SQL Tuning: Generating Optimal Execution Plans" by Dan Tow (O'Reilly, 2003)
 - <a href="https://www.postgresql.org/docs/15/index.html" target="_blank">PostgreSQL 15.12 Documentation</a> - PostgreSQL

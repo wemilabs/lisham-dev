@@ -8,7 +8,6 @@ tags:
   - computers
   - iot
   - quantum-computing
-postOfTheDay: false
 date: "2025-03-04T11:14:28.663Z"
 lastEdited: "2025-03-04T11:53:34.788Z"
 ---

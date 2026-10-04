@@ -3,8 +3,7 @@ import { PostItem } from "./post-item";
 
 export async function PostGrid() {
   const posts = await getAllPosts();
-  const featuredPost = posts.find((post) => post.postOfTheDay) ?? posts[0];
-  const latestPosts = posts.filter((post) => post.slug !== featuredPost?.slug);
+  const [featuredPost, ...latestPosts] = posts;
 
   if (!featuredPost) {
     return (

@@ -22,7 +22,6 @@ export interface BlogPost {
   description: string;
   date: string;
   tags: string[];
-  postOfTheDay?: boolean;
   content: string;
   readingTime: number;
   tableOfContents: TableOfContentsItem[];
@@ -218,7 +217,6 @@ export async function getPostBySlug(slug: string): Promise<BlogPost> {
       date: safeToISOString(data.date),
       content: processedContent.toString(),
       tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
-      postOfTheDay: data.postOfTheDay === true,
       readingTime: calculateReadingTime(content),
       tableOfContents,
     };

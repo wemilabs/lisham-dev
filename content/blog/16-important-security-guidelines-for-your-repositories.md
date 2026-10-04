@@ -10,7 +10,6 @@ tags:
   - 2fa
   - ssh
   - rbac
-postOfTheDay: true
 date: "2025-03-09T03:16:54.539Z"
 lastEdited: "2025-03-09T03:21:06.575Z"
 ---
@@ -194,7 +193,7 @@ To clone a repository using SSH, you need to use the SSH URL of the repository. 
 
   - Select "SSH" from the dropdown menu.
 
-  - Copy the SSH URL (it should look something like git@github.com:username/repository.git).
+  - Copy the SSH URL (it should look something like <git@github.com>:username/repository.git).
 
 - **Clone the Repo**:
   - Open PowerShell or Command Prompt.

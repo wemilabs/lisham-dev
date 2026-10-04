@@ -15,7 +15,6 @@ interface PostMetadata {
   tags: string[];
   coverImage?: string;
   status?: "draft" | "published";
-  postOfTheDay?: boolean;
   lastEdited?: string;
   publishDate?: string | null;
   date?: string;
@@ -269,7 +268,6 @@ export async function createDraft(
     description: metadata.description || "",
     tags: metadata.tags || ["draft"],
     status: "draft",
-    ...(metadata.postOfTheDay ? { postOfTheDay: true } : {}),
     lastEdited: new Date().toISOString(),
     publishDate: null,
   };

@@ -12,7 +12,6 @@ tags:
   - society
   - business
   - economy
-postOfTheDay: false
 date: "2025-02-23T15:18:20.851Z"
 lastEdited: "2025-02-23T15:26:56.593Z"
 ---

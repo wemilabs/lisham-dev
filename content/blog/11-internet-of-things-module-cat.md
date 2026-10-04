@@ -9,7 +9,6 @@ tags:
   - exam
   - cat
   - tinkercad
-postOfTheDay: true
 date: "2025-02-23T12:08:54.322Z"
 lastEdited: "2025-02-23T13:18:26.077Z"
 ---
