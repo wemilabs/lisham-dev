@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useRef,
+  useState,
+} from "react";
 
 type AuthMode = "signin" | "signup";
 
@@ -10,6 +16,7 @@ interface AuthContextType {
   openAuth: (mode?: AuthMode) => void;
   closeAuth: () => void;
   switchMode: () => void;
+  returnFocusRef: React.RefObject<HTMLElement | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,8 +24,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<AuthMode>("signin");
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   const openAuth = useCallback((initialMode: AuthMode = "signin") => {
+    returnFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     setMode(initialMode);
     setIsOpen(true);
   }, []);
@@ -31,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ isOpen, mode, openAuth, closeAuth, switchMode }}
+      value={{ isOpen, mode, openAuth, closeAuth, switchMode, returnFocusRef }}
     >
       {children}
     </AuthContext.Provider>
