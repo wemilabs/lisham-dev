@@ -188,4 +188,20 @@ export const projects: Project[] = [
     badge: "in progress",
     position: 20,
   },
+  {
+    title: "Oh My Otter | Get your repo ready for AI coding agents",
+    description:
+      "Open-source benchmarks and fixes that score your repo's readiness for Devin, Claude Code, Cursor, Codex, Droid, Copilot, and others.",
+    link: "https://github.com/wemilabs/oh-my-otter",
+    badge: "in progress",
+    position: 21,
+  },
+  {
+    title: "whatherust | Lightweight WhatsApp desktop client in Rust",
+    description:
+      "A Tauri-based WhatsApp desktop client: native webview, tray, notifications, and auto-updates without Electron.",
+    link: "https://github.com/wemilabs/whatherust",
+    badge: "in progress",
+    position: 22,
+  },
 ];
