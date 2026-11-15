@@ -11,11 +11,21 @@ import { useAuth } from "./auth-context";
 import { AuthForm } from "./auth-form";
 
 export function AuthModal() {
-  const { isOpen, closeAuth, mode } = useAuth();
+  const { isOpen, closeAuth, mode, returnFocusRef } = useAuth();
 
   return (
     <Dialog open={isOpen} onOpenChange={closeAuth}>
-      <DialogContent className="overflow-hidden border-primary/25 bg-card/95 shadow-[0_0_32px_color-mix(in_oklab,var(--primary)_12%,transparent)] backdrop-blur-xl sm:max-w-106.25">
+      <DialogContent
+        className="overflow-hidden border-primary/25 bg-card/95 shadow-[0_0_32px_color-mix(in_oklab,var(--primary)_12%,transparent)] backdrop-blur-xl sm:max-w-106.25"
+        onCloseAutoFocus={(event) => {
+          const target = returnFocusRef.current;
+          returnFocusRef.current = null;
+          if (target?.isConnected) {
+            event.preventDefault();
+            target.focus();
+          }
+        }}
+      >
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/70 to-transparent" />
         <DialogHeader className="border-primary/15 border-b pb-4">
           <DialogTitle className="font-mono uppercase tracking-wider">
