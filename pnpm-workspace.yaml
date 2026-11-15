@@ -18,3 +18,7 @@ minimumReleaseAgeExclude:
   - "@next/swc-win32-arm64-msvc@16.3.4 || 16.3.6 || 16.3.8 || 16.4.1 || 16.4.2 || 16.4.6"
   - "@next/swc-win32-x64-msvc@16.3.4 || 16.3.6 || 16.3.8 || 16.4.1 || 16.4.2 || 16.4.6"
   - next@16.3.4 || 16.3.6 || 16.3.8 || 16.4.1 || 16.4.2 || 16.4.6
+
+overrides:
+  "esbuild@<0.25.0": 0.25.12
+  "postcss-selector-parser@<6.1.5": 6.1.5
