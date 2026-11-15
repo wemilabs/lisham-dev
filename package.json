@@ -2,6 +2,7 @@
   "name": "lisham-dot-dev",
   "version": "1.9.18",
   "private": true,
+  "packageManager": "pnpm@10.34.9",
   "scripts": {
     "dev": "next dev --inspect",
     "build": "next build",
