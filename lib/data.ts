@@ -45,8 +45,8 @@ export const projects: Project[] = [
     description: "Dream Journaling Mobile App.",
     image:
       "https://ubrw5iu3hw.ufs.sh/f/TFsxjrtdWsEIbcHjyBmlalY8ZuTPQRqJXvyrKeEHz2finpFN",
-    // link: "https://github.com/wemilabs/dreamnal",
-    badge: "paused",
+    link: "https://dreamnal.vercel.app",
+    badge: "in progress",
     position: 4,
   },
   {
