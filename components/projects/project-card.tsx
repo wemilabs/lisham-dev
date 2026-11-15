@@ -1,15 +1,12 @@
 import { GlowContainer } from "@/components/glow-container";
+import { ProjectImage } from "@/components/projects/project-image";
 import { Tag } from "@/components/tag";
 import type { BadgeType, Project } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight } from "lucide-react";
-import Image from "next/image";
 import type { ReactNode } from "react";
 
 export type { BadgeType } from "@/lib/data";
-
-const fallbackImage =
-  "https://ubrw5iu3hw.ufs.sh/f/TFsxjrtdWsEIIU0MlBPxpbxQUqOZN6A0LHBjPY4Vlwumcioz";
 
 const badgeVariants: Record<
   BadgeType,
@@ -32,14 +29,7 @@ function ProjectContent({
   return (
     <>
       <div className="relative aspect-video overflow-hidden border-border/60 border-b bg-muted">
-        <Image
-          src={image ?? fallbackImage}
-          alt={`Preview of ${title}`}
-          fill
-          loading="eager"
-          sizes="(max-width: 767px) calc(100vw - 2rem), (max-width: 1279px) calc(50vw - 2.5rem), 35rem"
-          className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-        />
+        <ProjectImage src={image} alt={`Preview of ${title}`} />
         <div className="absolute inset-0 bg-linear-to-t from-background/80 via-transparent to-transparent" />
         <Tag
           variant={badgeVariants[badge]}
